@@ -134,6 +134,13 @@ begin
             LauncherPath := ExpandConstant('{app}') + '\mods\fh2\bin\FH2Launcher.exe';
             Exec(LauncherPath, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
           end;
+        { the retry could not fix the mod either, so abort the setup }
+        if not FileExists(ModDescFilePath) then
+        begin
+          Log('FH2 update failed, aborting the setup');
+          MsgBox(ExpandConstant('{cm:FH2SetupAborted}'), mbError, MB_OK);
+          Exit;
+        end;
       end;
   except
     ExceptionMessage := GetExceptionMessage;
