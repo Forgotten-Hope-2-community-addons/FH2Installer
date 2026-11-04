@@ -55,7 +55,6 @@ Filename: "{app}\mods\fh2\bin\FH2Launcher.exe"; Description: "{cm:LaunchProgram,
 #include "Modules\Keygen.iss"
 #include "Modules\Language.iss"
 #include "Modules\OS.iss"
-#include "Modules\Time.iss"
 #include "Modules\WizardForm.iss"
 
 var
@@ -83,10 +82,7 @@ begin
 end;
 
 procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
-var
-  CurTick: DWORD;
 begin
-  CurTick := GetTickCount;
   PercentLabel.Caption :=
     Format('%.1f %%', [(CurProgress * 100.0) / MaxProgress]);
 end;

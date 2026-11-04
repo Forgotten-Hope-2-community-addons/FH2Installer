@@ -1,3 +1,19 @@
+; International edition of the online installer.
+; The Russian edition (Online_ru.iss) #defines RUEdition and includes this
+; script, so everything below is shared; the ISPP defines underneath switch
+; the mod file sources, the update URL, the extra updater parameter and the
+; output directory.
+
+#ifndef RUEdition
+#define ModSourceRoot "Files\slim"
+#define OnlineOutputDir "Output_online"
+#define VersionURL "https://fhbeta.warumdarum.de/fh2share/latestversion.php"
+#else
+#define ModSourceRoot "Files\slim_ru"
+#define OnlineOutputDir "Output_online_ru"
+#define VersionURL "https://ru.playfh2.net/fh2share/latestversion.php"
+#endif
+
 #include "Common.iss"
 
 [Setup]
@@ -28,7 +44,7 @@ WizardSmallImageFile=InstallFiles\GFX\WizardSmallImage.bmp
 SetupIconFile=InstallFiles\GFX\fh2.ico
 LanguageDetectionMethod=uilanguage
 InternalCompressLevel=ultra64
-OutputDir=Output_online
+OutputDir={#OnlineOutputDir}
 OutputBaseFilename=FH2 Online Installer
 AppendDefaultDirName=true
 UninstallDisplayIcon={app}\mods\fh2\fh2.ico
@@ -39,10 +55,10 @@ CompressionThreads=auto
 [Files]
 DestName: "WizardForm.TopLogoImage.bmp"; Source: "InstallFiles\GFX\topbar.bmp"; Flags: dontcopy solidbreak;
 DestName: "discord.ico"; Source: "InstallFiles\GFX\discord.ico"; Flags: dontcopy solidbreak;
-Source: "Files\slim\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: main;
+Source: "{#ModSourceRoot}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: main;
 Source: "Redist\*"; DestDir: "{tmp}\Redist"; Flags: ignoreversion recursesubdirs;
-Source: "Files\slim\mods\fh2\bin\*.*"; DestDir: "{tmp}\bin"; Flags: ignoreversion recursesubdirs; Components: main;
-Source: "Files\slim\BF2.exe"; DestDir: "{app}"; Flags: ignoreversion; components: main;
+Source: "{#ModSourceRoot}\mods\fh2\bin\*.*"; DestDir: "{tmp}\bin"; Flags: ignoreversion recursesubdirs; Components: main;
+Source: "{#ModSourceRoot}\BF2.exe"; DestDir: "{app}"; Flags: ignoreversion; components: main;
 
 [Run]
 Filename: "{tmp}\Redist\VC++2019\VC_redist.x86.exe"; Description: "{cm:SetupTask,Visual C++ 2019}"; Parameters: "/quiet"; StatusMsg: "{cm:SetupTask,Visual C++ 2019}"; Flags: runascurrentuser; Components: vcpp2019
@@ -57,10 +73,7 @@ FileName: "{cmd}"; Parameters: "/C echo noop"; Flags: runhidden; Description: "{
 #include "Modules\Language.iss"
 #include "Modules\Misc.iss"
 #include "Modules\OS.iss"
-#include "Modules\Time.iss"
 #include "Modules\WizardForm.iss"
-
-
 
 var
   Key: String;
@@ -83,37 +96,44 @@ var
 begin
   FH2UpdateSuccess := False;
   WizardForm.StatusLabel.Caption := ExpandConstant('{cm:DownloadingSomething,Forgotten Hope 2}');
-  
+
   try
     WinHttpReq := CreateOleObject('WinHttp.WinHttpRequest.5.1');
-    WinHttpReq.Open('GET', 'https://fhbeta.warumdarum.de/fh2share/latestversion.php', False);
+    WinHttpReq.Open('GET', '{#VersionURL}', False);
     WinHttpReq.Send('');
- 
+
     if WinHttpReq.Status <> 200 then
       begin
         Log('HTTP Error: ' + IntToStr(WinHttpReq.Status) + ' ' + WinHttpReq.StatusText);
-        MsgBox(ExpandConstant('{cm:FailedToObtainModVersion}'), mbInformation, MB_OK);        
-      end
-    else
+        MsgBox(ExpandConstant('{cm:FailedToObtainModVersion}'), mbInformation, MB_OK);
+        { abort: CheckGetFH2Files closes the wizard because FH2UpdateSuccess stays False }
+        Exit;
+      end;
+
+    FullVersion := WinHttpReq.ResponseText;
+    LauncherPath := ExpandConstant('{tmp}') + '\bin\FH2Updater.exe';
+    BF2Path := ExpandConstant('{app}');
+    UploadSpeed := 1024 * 1024; // 1 TB/s
+    Params := '--update "' + BF2Path + '" "' + FullVersion + '" ' + IntToStr(UploadSpeed);
+#ifdef RUEdition
+    Params := Params + ' 1'; // the RU updater takes an extra parameter
+#endif
+    Log(LauncherPath);
+    Log(Params);
+    Exec(LauncherPath, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
+
+    ModDescFilePath := ExpandConstant('{app}') + '\mods\fh2\mod.desc';
+    if not FileExists(ModDescFilePath) then
       begin
-        FullVersion := WinHttpReq.ResponseText;
-        LauncherPath := ExpandConstant('{tmp}') + '\bin\FH2Updater.exe';
-        BF2Path := ExpandConstant('{app}');
-        UploadSpeed := 1024 * 1024; // 1 TB/s
-        Params := '--update "' + BF2Path + '" "' + FullVersion + '" ' + IntToStr(UploadSpeed);
-        Log(LauncherPath);
-        Log(Params);
-        Exec(LauncherPath, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
-        ModDescFilePath := ExpandConstant('{app}') + '\mods\fh2\mod.desc';
-        if not FileExists(ModDescFilePath) then
-        begin
-          ResultCode := MsgBox(ExpandConstant('{cm:FH2UpdateFailed}'), mbError, MB_OK);
-          DestPath := ExpandConstant('{app}') + '\mods\fh2\bin';
-          if DirExists(DestPath) or CreateDir(DestPath) then
-            DirectoryCopy(ExpandConstant('tmp') + '\bin', DestPath);
+        ResultCode := MsgBox(ExpandConstant('{cm:FH2UpdateFailed}'), mbError, MB_OK);
+        { Fallback: unpack the bundled bin files and run the update again }
+        DestPath := ExpandConstant('{app}') + '\mods\fh2\bin';
+        if DirExists(DestPath) or CreateDir(DestPath) then
+          begin
+            DirectoryCopy(ExpandConstant('{tmp}') + '\bin', DestPath);
             LauncherPath := ExpandConstant('{app}') + '\mods\fh2\bin\FH2Launcher.exe';
             Exec(LauncherPath, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
-        end;
+          end;
       end;
   except
     ExceptionMessage := GetExceptionMessage;
@@ -121,6 +141,7 @@ begin
     MsgBox(ExpandConstant('{cm:FailedToObtainModVersion}') + ' Exception: ' + ExceptionMessage, mbError, MB_OK);
     Exit;
   end;
+
   FH2UpdateSuccess := True;
 end;
 
@@ -152,10 +173,7 @@ begin
 end;
 
 procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
-var
-  CurTick: DWORD;
 begin
-  CurTick := GetTickCount;
   PercentLabel.Caption :=
     Format('%.1f %%', [(CurProgress * 100.0) / MaxProgress]);
 end;
@@ -261,7 +279,7 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  case CurPageID of   
+  case CurPageID of
     wpSelectComponents: begin
       // Uncheck redist components when installer is running under Wine
       if IsRunningUnderWine() then

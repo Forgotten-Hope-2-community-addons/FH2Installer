@@ -5,8 +5,8 @@ Unofficial installer for [Forgotten Hope 2](http://fhmod.org), an award-winning 
 * Supports all Windows version starting from XP SP3
 * Includes bare minimum of files from BF2, required to run FH2
 * Multi-language support (all languages availible in the retail game + Russian)
-* Automatic key generation from the hardware, which provides for absolute uniqueness of the generated key
-* Installation of DirectX, .NET Framework 4.0
+* Automatic CD-key generation at setup time, using the same key format as BF2KeyMan
+* Installation of DirectX, .NET Framework 4.7.2
 
 ## Downloads
 Visit https://playfh2.net/download for up-to-date downloads.

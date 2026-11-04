@@ -22,7 +22,7 @@ var
 begin
   language := ExpandConstant('{language}');
   case language of
-    'Berlarusian': Result := 'be';
+    'Belarusian': Result := 'be';
     'English': Result := 'en_US';
     'Dutch': Result := 'nl';
     'French': Result := 'fr_FR';

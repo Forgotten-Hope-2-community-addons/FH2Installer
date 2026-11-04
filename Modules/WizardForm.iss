@@ -14,17 +14,6 @@ begin
   ShellExecAsOriginalUser('open', 'https://discord.gg/hU878P4', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
 end;
 
-procedure DeleteComponents(List: TStrings);
-var
-  I: Integer;
-begin
-  for I := WizardForm.ComponentsList.Items.Count - 1 downto 0 do
-  begin
-    if List.IndexOf(WizardForm.ComponentsList.Items[I]) <> -1 then
-      WizardForm.ComponentsList.Items.Delete(I);
-  end;
-end;
-
 procedure DiscordLogoInitializeWizard;
 var
   BevelTop: Integer;
